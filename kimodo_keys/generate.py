@@ -37,6 +37,10 @@ def generate_player(
     from kimodo.exports.bvh import save_motion_bvh
 
     torch.manual_seed(seed)
+    if device == "cuda" and not torch.cuda.is_available():
+        print("[!] CUDA not available in this torch build — falling back to CPU "
+              "(slower but works; a 4s take is a few minutes)")
+        device = "cpu"
     model = load_model(modelname=model_name, device=device)
     motion_rep = model.motion_rep
     skel30 = motion_rep.skeleton
@@ -85,4 +89,17 @@ def generate_player(
         root_pos = root_pos[0]
     save_motion_bvh(out_bvh, local77, root_pos, skeleton=skel77, fps=fps)
     print(f"[E] saved {out_bvh}")
+
+    # [V] built-in verification: how far are the constrained wrists from their timelines?
+    rot77, pos77, *_ = skel77.fk(local77, root_pos)
+    ixw = {n: i for i, n in enumerate(skel77.bone_order_names)}
+    import numpy as _np
+    for jname, tl in targets.items():
+        if tl is None:
+            continue
+        got = pos77[:, ixw[jname]].detach().cpu().numpy()
+        want = _np.asarray(tl)[: got.shape[0]]
+        err = _np.linalg.norm(got - want, axis=1)
+        print(f"[V] {jname}: wrist-to-timeline mean {err.mean()*100:.1f} cm, "
+              f"p95 {_np.percentile(err, 95)*100:.1f} cm")
     return {"bvh": out_bvh, "keyboard": kb, "fps": fps, "frames": n_frames}
