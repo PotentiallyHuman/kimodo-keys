@@ -1,0 +1,14 @@
+[project]
+name = "kimodo-keys"
+version = "0.1.0"
+description = "MIDI-driven keyboard-player generation for Kimodo motion models"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+dependencies = ["numpy", "pretty_midi", "pianoplayer"]
+
+[project.scripts]
+kimodo-keys = "kimodo_keys.cli:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
