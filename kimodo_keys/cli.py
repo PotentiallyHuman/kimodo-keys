@@ -22,6 +22,12 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--steps", type=int, default=30)
     ap.add_argument("--out", default="played.bvh")
+    ap.add_argument("--start-pose", action="store_true",
+                    help="author the opening keyboard stance and pin it as a keyframe, "
+                         "so the take is generated from that posture outward")
+    ap.add_argument("--hard", action="store_true",
+                    help="binding hand conditioning: observed channels clamp every "
+                         "denoise step (deterministic hands, generative body)")
     ap.add_argument("--plan-out", default=None, help="also write the press plan as JSON")
     args = ap.parse_args()
 
@@ -40,7 +46,8 @@ def main() -> None:
     generate_player(plan, seconds=args.end - args.start,
                     prompt=args.prompt or PROMPT_DEFAULT, model_name=args.model,
                     device=args.device, seed=args.seed,
-                    diffusion_steps=args.steps, out_bvh=args.out)
+                    diffusion_steps=args.steps, out_bvh=args.out, hard=args.hard,
+                    start_pose=args.start_pose)
 
 
 if __name__ == "__main__":

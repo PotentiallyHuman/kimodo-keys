@@ -5,11 +5,13 @@ import os
 import sys
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from kimodo_keys.keyboard import (BOARD_W, WHITE_W, PlacedKeyboard, is_white,
                                   key_local, key_top_local)
 from kimodo_keys.plan import Press, chord_groups, _fallback_fingering
+from kimodo_keys.timeline import FINGER_LATERAL
 from kimodo_keys.timeline import HandTimeline
 
 
@@ -47,9 +49,19 @@ def test_timeline_holds_and_moves():
     held = tl.at(1.3)                                  # between notes: still near first key
     on_second = tl.at(2.2)
     assert np.linalg.norm(held - on_first) < 0.06
-    # thumb->pinky absorbs most of an octave: the WRIST moves ~10 cm, not 16.5 —
-    # exactly how a hand plays it (fingering absorbs span before the arm does)
-    assert abs(on_second[0] - on_first[0]) > 0.08
+    # Thumb->pinky absorbs an octave almost entirely: the arm supplies only the remainder.
+    # An octave is 0.1645 m and an adult resting spread is 0.136 m, so the wrist should
+    # travel the ~0.029 m difference — NOT the whole interval.
+    #
+    # This assertion used to demand > 0.08 m, which only held because FINGER_LATERAL then
+    # spanned 6.7 cm, about half a real hand. Widening the hand to published anthropometry
+    # correctly SHRANK this number, so the bound is now stated as a band around the
+    # geometric prediction rather than a floor that rewards an undersized hand.
+    octave_m = abs(kb.key_point(72)[0] - kb.key_point(60)[0])
+    spread_m = FINGER_LATERAL[5] - FINGER_LATERAL[1]
+    travel = abs(on_second[0] - on_first[0])
+    assert travel == pytest.approx(octave_m - spread_m, abs=0.005)
+    assert travel < octave_m / 2                       # the hand, not the arm, does the work
     # press dips below hover
     assert tl.at(0.7)[2] < tl.at(1.35)[2] + 1e-9 or True
 

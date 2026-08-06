@@ -32,6 +32,10 @@ def generate_player(
     diffusion_steps: int = 30,
     out_bvh: str = "played.bvh",
     up_axis: int = 1,
+    hard: bool = False,
+    constraint_cfg: float = 6.0,
+    start_pose: bool = False,
+    start_pose_frames: int = 3,
 ) -> dict:
     from kimodo.model.load_model import load_model
     from kimodo.exports.bvh import save_motion_bvh
@@ -63,10 +67,20 @@ def generate_player(
     }
     print("[B] keyboard placed; hand timelines sampled")
 
-    cset = build_hand_constraints(skel30, base, targets, device=device)
-    print("[C] constrained take...")
+    csets = [build_hand_constraints(skel30, base, targets, device=device)]
+    if start_pose:
+        from .start_pose import build_start_pose_constraint
+        csets.append(build_start_pose_constraint(skel30, base, device=device,
+                                                 n_keyframes=start_pose_frames,
+                                                 up_axis=up_axis))
+        print(f"[B+] authored playing stance pinned on frame(s) 0..{start_pose_frames-1}")
+    if hard:
+        from .conditioning import enable_hard_hand_conditioning
+        enable_hard_hand_conditioning(model)
+    print("[C] constrained take..." + (" (HARD conditioning)" if hard else ""))
     final = model([prompt], [n_frames], diffusion_steps, multi_prompt=True,
-                  cfg_weight=[2.0, 2.0], num_samples=1, constraint_lst=[cset])
+                  cfg_weight=[2.0, constraint_cfg], num_samples=1, constraint_lst=csets,
+                  post_processing=True)   # kimodo's own constraint-enforcement stage
 
     torch.save({k: v for k, v in final.items() if torch.is_tensor(v)},
                out_bvh + ".raw.pt")            # cache: iterate on D/E without re-diffusing
