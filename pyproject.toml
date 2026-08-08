@@ -1,13 +1,20 @@
 [project]
-name = "kimodo-keys"
-version = "0.2.0"
-description = "MIDI-driven keyboard-player generation for Kimodo motion models"
+name = "score2motion"
+version = "0.3.0b0"
+description = "MIDI-driven instrument-player motion: give it a score, get a musician playing it"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
-dependencies = ["numpy", "pretty_midi", "pianoplayer"]
+dependencies = ["numpy", "pretty_midi", "pianoplayer", "mido"]
+
+[project.optional-dependencies]
+bass = []          # the bass pipeline runs inside Blender; no extra pip deps
 
 [project.scripts]
-kimodo-keys = "kimodo_keys.cli:main"
+s2m-keys = "score2motion.keys.cli:main"
+s2m-bass = "score2motion.bass.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["score2motion*"]
 
 [build-system]
 requires = ["setuptools"]

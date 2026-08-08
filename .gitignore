@@ -2,3 +2,7 @@ out/
 __pycache__/
 *.pyc
 *.raw.pt
+*.blend
+*.blend1
+*.mp4
+data/*.jsonl

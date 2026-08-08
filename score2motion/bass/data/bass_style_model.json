@@ -1,0 +1,118 @@
+{
+ "_doc": "LEARNED STYLE MODEL - numeric constants measured from motion-capture takes of a bass player. Derived parameters only: no raw capture, no audio and no personal data is included or required. The generator consumes any MIDI plus this file.",
+ "scale_compensation_guitar_to_bass": 1.39,
+ "left_hand_grip_envelope_deg": {
+  "_doc": "playing grip is ~half the static channel grip; per joint mean/sd from 361 aligned frames",
+  "knuckle": {
+   "mean_range": [
+    45,
+    62
+   ],
+   "sd": 16,
+   "press_peak": 90
+  },
+  "middle_joint": {
+   "mean_range": [
+    44,
+    51
+   ],
+   "sd": 19
+  },
+  "tip_joint": {
+   "mean_range": [
+    19,
+    27
+   ],
+   "sd": 12,
+   "never_straight": true
+  },
+  "idle_finger_clamp_deg": 30
+ },
+ "position_shift_dynamics": {
+  "_doc": "measured big shifts: quick + early, NOT spread over the gap",
+  "big_shift_threshold_frets": 2,
+  "duration_ms_per_fret": 60,
+  "duration_ms_clamp": [
+   120,
+   280
+  ],
+  "arrive_before_note_ms": 250,
+  "peak_velocity_m_s": 0.9,
+  "small_shift_behavior": "gradual drift across the whole gap"
+ },
+ "note_attraction": {
+  "_doc": "wrist follows style trajectory, softly pulled to the required spot near notes (proven: 45.6mm -> 12.3mm median press residual)",
+  "full_attraction_within_s": 0.1,
+  "zero_attraction_beyond_s": 0.35
+ },
+ "fingering_laws": {
+  "priority_1": "correct note on the designed finger; realism second, as inspiration within limits",
+  "slap_string": "always the deepest string; pops on the high strings",
+  "riff_climb": "pivot-cycle: cycle advances on fret change; repeated fret restrikes same finger; repeat after pinky pivots to index (pattern-2 entry)",
+  "economy_default": "flair is authored, economy is default: outside designed showpieces use nearest reachable finger, index may stretch one fret back",
+  "fast_run_alternation_s": 0.22
+ },
+ "right_hand_slap": {
+  "_doc": "left-relative wrist rotation (room/dance subtracted); take-3 249s segment",
+  "working_swing_median_deg": 32,
+  "swing_p90_deg": 62,
+  "strike_rate_per_min_peakactivity": 291,
+  "peak_angular_speed_deg_s_p95": 263,
+  "articulation_amp_ratio": {
+   "slap": 1.0,
+   "pop": 0.7,
+   "ghost": 0.4,
+   "badink_ba": 0.8,
+   "badink_dink": 0.6
+  },
+  "doctrine": "see quest_hands/SLAP_BASS_DOCTRINE.md: slap:pop 7:1, thumb 2.72 m/s, contact +9ms, badink 100ms stagger"
+ },
+ "bass_groove_motion": {
+  "_doc": "left-wrist height over ABSOLUTE floor drives the instrument: grip point follows, bass body hangs by constant-length strap",
+  "base_neck_hand_height_m": 1.13,
+  "lift_amplitude_m": [
+   0.06,
+   0.1
+  ],
+  "lift_duration_s": [
+   0.4,
+   7.0
+  ],
+  "lifts_per_minute_grooving": 8,
+  "fore_back_envelope_m": 0.2,
+  "strap_law": "fixed length per character (male 1.562m); stretch>100% = constraint violation, resolve by rotating the bass around the strap anchors"
+ },
+ "alignment_protocol": {
+  "_doc": "recording protocol: count-in stamps are ground truth; pattern matching is ambiguous on repetitive songs",
+  "count_in_beeps": 4,
+  "song_start_event": "authoritative",
+  "space": "bounded-floor, SPACE_RESET events segment worlds"
+ },
+ "right_hand_walking": {
+  "_doc": "measured from the 2026-08-08 VR walking take, in the PALM's own frame so head angle and floor tilt cancel out",
+  "claw_ring_deg": {
+   "knuckle": 45.2,
+   "middle": 68.3,
+   "tip": 39.0
+  },
+  "claw_pinky_deg": {
+   "knuckle": 54.9,
+   "middle": 70.5,
+   "tip": 42.5
+  },
+  "pluck_index_deg": {
+   "knuckle_swing": 37.4,
+   "middle_swing": 64.9,
+   "tip_swing": 32.6
+  },
+  "pluck_middle_deg": {
+   "knuckle_swing": 45.2,
+   "middle_swing": 60.2,
+   "tip_swing": 43.1
+  },
+  "thumb_to_palm_deg": 166.5,
+  "thumb_swing_deg": 16.5,
+  "alternation_index_to_middle": 1.0,
+  "rule": "hand anchored on the planted thumb; ring+pinky clawed and still; index and middle alternate, each pressing through its string and retracting"
+ }
+}
