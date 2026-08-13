@@ -45,6 +45,42 @@ It plays more than one note at a time:
 - `check_plan()` refuses a part your neck cannot play — *"plan needs fret 22; this neck has
   0..12"* — before anything is created in your open file.
 
+### Exact placement and stem-informed gestures
+
+The planner above is fast and good; when you want *provably* optimal fingering, or your
+MIDI came from a transcription you don't fully trust, four more tools chain in between:
+
+```bash
+python3 -m score2motion.fretted.truthgate plan.json stem.wav --out gated.json   # audio veto
+python3 -m score2motion.fretted.place_dp  gated.json --out placed.json          # exact DP
+python3 -m score2motion.fretted.slides    placed.json stem.wav --out slides.json
+python3 -m score2motion.fretted.risers    placed.json stem.wav --out risers.json
+```
+
+- **`place_dp`** solves string/fret/hand-position/finger *globally* — an exact Viterbi DP
+  over hand states with integer costs and defined tie-breaks, so the same part always gets
+  the same fingering. It knows the fretboard is a lattice (the same pitch repeats one
+  string up, five frets back on fourths tunings), prices hand travel against string
+  crossings, keeps adjacent octave pairs rigid as one shape, and refuses hand shifts
+  faster than a human hand (150 ms + 25 ms per fret). Open strings are used only when a
+  pitch has no fretted home — an open reads as a missed note on screen otherwise.
+- **`truthgate`** checks every planned note against the stem's own pitch track (pyin) and
+  octave-corrects, drops, or flags it. Transcriptions octave-err quiet notes; the gate is
+  what keeps the hand from sailing to the 12th fret for a note nobody plays.
+- **`slides`** finds real note-to-note glides in the audio. A glide covering ≥ 80 % of the
+  interval with a small same-string move is *carried* — finger stays down, hand travels;
+  anything less is a grace note and placement stands.
+- **`risers`** finds the single-note ramp where the hand slides up the neck ahead of a
+  drop — ≥ 3 semitones over ≥ 300 ms, discriminated from vibrato, drift, and fretted runs
+  by measured pullback, rate, and stair-step share.
+
+`truthgate`, `slides` and `risers` read audio and need the extra:
+`pip install score2motion[audio]`. `place_dp` is pure Python.
+`markers_blender.py` overlays a red fret marker with the finger number, driven by the
+same placed plan — the marker is the claim, the hand is the proof; on carried slides the
+marker parks for the first half of the note, then travels at constant speed and lands
+exactly as the note ends.
+
 ## The idea
 
 Three things own three different parts of the problem, and keeping them apart is what

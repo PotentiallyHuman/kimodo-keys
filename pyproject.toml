@@ -8,6 +8,7 @@ dependencies = ["numpy", "pretty_midi", "pianoplayer", "mido"]
 
 [project.optional-dependencies]
 bass = []          # the bass pipeline runs inside Blender; no extra pip deps
+audio = ["librosa", "scipy"]   # truthgate / slides / risers read stems
 
 [project.scripts]
 s2m-keys = "score2motion.keys.cli:main"

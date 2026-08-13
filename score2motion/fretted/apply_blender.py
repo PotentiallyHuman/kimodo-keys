@@ -26,6 +26,10 @@ from mathutils import Matrix, Quaternion, Vector
 
 FPS = 30
 PRESS_DEPTH = 0.004      # how far past first contact the string is driven down
+# A fret stands about a millimetre proud of the board, and a pressed string
+# stops on it. That is where a fingertip stops too -- see press_point, which
+# used to aim BELOW the board instead and buried every fretting hand in the wood.
+FRET_HEIGHT = 0.001
 HOVER = 0.013            # measured resting height of an unused finger, metres
 GAIN = 0.5
 # 40, not 12. Each pass moves the hand at most 6cm, and 12 of those is 72cm of
@@ -77,23 +81,81 @@ class Scene:
     def Bi(self):
         return self.root.matrix_world.inverted()
 
-    def board_top(self):
+    def board_top(self, x=None, y=None):
+        """How high the playing surface is -- at a given place on it.
+
+        A single number for the whole neck is only right if the neck is exactly
+        level in the instrument's frame. Necks are not: they are angled back, and a
+        constant height therefore drifts further below the real surface the further
+        up you go. Measured on the band's bass, using the global maximum put the
+        target 0.7mm under the wood at the nut and 4.1mm under it by the 12th fret --
+        the error grew with the fret number, which is the signature of a tilt being
+        ignored rather than an offset being wrong.
+
+        So the top face is fitted as a plane and read at the point asked for. With no
+        point given it falls back to the old global maximum, which keeps existing
+        callers working.
+        """
         Bi = self.Bi
-        return max((Bi @ (self.neck.matrix_world @ v.co)).z for v in self.neck.data.vertices)
+        vs = [Bi @ (self.neck.matrix_world @ v.co) for v in self.neck.data.vertices]
+        if x is None or y is None or len(vs) < 4:
+            return max(v.z for v in vs)
+        top = sorted(vs, key=lambda v: -v.z)[:max(3, len(vs) // 2)]
+        # least squares z = a*x + b*y + c over the top face
+        n = len(top)
+        sx = sum(v.x for v in top)
+        sy = sum(v.y for v in top)
+        sz = sum(v.z for v in top)
+        sxx = sum(v.x * v.x for v in top)
+        syy = sum(v.y * v.y for v in top)
+        sxy = sum(v.x * v.y for v in top)
+        sxz = sum(v.x * v.z for v in top)
+        syz = sum(v.y * v.z for v in top)
+        A = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, float(n)]]
+        b = [sxz, syz, sz]
+        # 3x3 solve by elimination; if the face is degenerate, fall back
+        for i in range(3):
+            p = max(range(i, 3), key=lambda r: abs(A[r][i]))
+            if abs(A[p][i]) < 1e-12:
+                return max(v.z for v in vs)
+            A[i], A[p] = A[p], A[i]
+            b[i], b[p] = b[p], b[i]
+            for r in range(3):
+                if r == i:
+                    continue
+                f = A[r][i] / A[i][i]
+                for c in range(i, 3):
+                    A[r][c] -= f * A[i][c]
+                b[r] -= f * b[i]
+        a_, b_, c_ = (b[i] / A[i][i] for i in range(3))
+        return a_ * x + b_ * y + c_
 
     def press_point(self, string, fret):
         """Where the fingertip must end up, in world space.
 
-        Just behind the fret wire, across at that string's line, and down at
-        the fretboard -- which is what actually stops the string.
+        Just behind the fret wire, across at that string's line, and resting ON the
+        board -- at the height of the fret wire, which is what actually stops the
+        string.
+
+        This used to read `board_top - PRESS_DEPTH`, four millimetres BELOW the top of
+        the neck. That is inside the wood. Every hand solved against it was being told
+        to put its fingertips through the fretboard, and every contact check passed,
+        because the check measured the distance to this target and the target itself
+        was the error. Measured on the band's bass it placed fingertips 6 to 10mm deep,
+        and the fault showed up identically on the guitarist -- knuckles buried, thumb
+        pushed out through the front of the neck -- because both read it from here.
+
+        A pressed string does not go into the board: it is driven down until it lands
+        on the fret, and the fingertip stops there. So the target sits a fret's height
+        ABOVE the board, not a press depth below it.
         """
         Bi = self.Bi
         nut = self.frets[0].location.x
         toward_nut = 1.0 if nut > self.frets[max(self.frets)].location.x else -1.0
         x = self.frets[fret].location.x + toward_nut * 0.006 if fret else nut
         y = (Bi @ self.strings[string].matrix_world.translation).y
-        z = self.board_top()
-        return self.root.matrix_world @ Vector((x, y, z - PRESS_DEPTH))
+        z = self.board_top(x, y)          # the surface HERE, not the neck's high point
+        return self.root.matrix_world @ Vector((x, y, z + FRET_HEIGHT))
 
     def hover_point(self, string, fret):
         p = self.press_point(string, fret)
@@ -327,10 +389,20 @@ def curl_finger_to(sc, finger, target, iters=14, max_deg=12.0):
     return (target - (W @ pb[tip].tail)).length
 
 
-def make_markers(sc):
-    """A red dot at the pressed fret with the finger number on it."""
+def make_markers(sc, n=6):
+    """A red dot at each pressed fret, carrying the number of the finger on it.
+
+    ONE PER NOTE, not one per finger. Per finger, a barre -- one finger holding
+    three strings -- lit a single fret and left the other two dark, and a chord
+    could never show more marks than it used distinct fingers. A pool of six
+    covers any chord a six-string can sound.
+
+    The number is a CHILD of the dot but Blender does not inherit visibility
+    through parenting, so the digits sat on screen permanently while their dots
+    blinked. Both are keyed together now; see `key()`.
+    """
     made = {}
-    for d in range(1, 5):
+    for d in range(1, n + 1):
         name = f"{sc.prefix}NOTEMARK_{d}"
         ob = bpy.data.objects.get(name)
         if ob is None:
@@ -358,9 +430,16 @@ def make_markers(sc):
 
 
 def key(ob, frame, hide):
-    ob.hide_viewport = ob.hide_render = hide
-    ob.keyframe_insert("hide_viewport", frame=frame)
-    ob.keyframe_insert("hide_render", frame=frame)
+    """Show or hide a marker AND the number riding on it.
+
+    Blender does not inherit visibility through parenting, so hiding the dot left
+    its digit hanging in mid-air for the whole take. The children are keyed
+    explicitly.
+    """
+    for o in (ob, *ob.children):
+        o.hide_viewport = o.hide_render = hide
+        o.keyframe_insert("hide_viewport", frame=frame)
+        o.keyframe_insert("hide_render", frame=frame)
     if not hide:
         ob.keyframe_insert("location", frame=frame)
 
@@ -449,10 +528,16 @@ def main():
             sc.pb[b].keyframe_insert("location", frame=f_on)
             sc.pb[b].keyframe_insert("rotation_quaternion", frame=f_on)
 
-        for n in group:
+        # one marker per SOUNDING NOTE, so every fret the chord holds lights up
+        for slot, n in enumerate(group, start=1):
+            if slot not in markers:
+                break
             f_off = max(f_on + 1, int(n["t_off"] * FPS))
-            mk = markers[n["finger"]]
+            mk = markers[slot]
             mk.location = sc.press_point(n["string"], n["fret"])
+            for ch in mk.children:                 # the digit says WHICH finger
+                if ch.type == "FONT":
+                    ch.data.body = str(n["finger"])
             key(mk, f_on - 1, True)
             key(mk, f_on, False)
             key(mk, f_off, False)

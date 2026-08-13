@@ -48,15 +48,45 @@ def fit_octave(notes, inst: Instrument):
     """Transcriptions (Suno's especially) often sit an octave or two above the
     real instrument. Shift in whole octaves until the part fits the neck."""
     lo_i, hi_i = inst.range_midi()
-    best, best_out = None, 0
+    fits, best, best_out = [], None, 0
     for shift in (0, -12, -24, -36, 12, 24):
         lo = min(n.pitch for n in notes) + shift
         hi = max(n.pitch for n in notes) + shift
         out = sum(1 for n in notes if not (lo_i <= n.pitch + shift <= hi_i))
         if lo >= lo_i and hi <= hi_i:
-            return shift, 0
+            fits.append(shift)
         if best is None or out < best_out:
             best, best_out = shift, out
+    if fits:
+        # PLAY IT LOW. Returning the first shift that merely FITS meant 0 always
+        # won, and once the neck was extended to 24 frets a part that used to be
+        # forced down an octave suddenly "fit" up at the 12th to 22nd -- the
+        # player ended up clinging to the far end of the neck with the body of
+        # the instrument in the way. Extending the neck had quietly removed the
+        # only thing keeping the part in a sane position.
+        #
+        # A bassist plays the LOWEST position the part allows, near where the
+        # hand rests. So among the shifts that fit, take the one whose notes need
+        # the lowest frets.
+        def mean_fret(shift):
+            fs = []
+            for n in notes:
+                p = inst.positions_for(n.pitch + shift)
+                if p:
+                    fs.append(min(f for _s, f in p))
+            return sum(fs) / len(fs) if fs else 99
+
+        # But do not transpose a part that is ALREADY in a sane position: picking
+        # purely by lowest fret pulled a guitar sitting comfortably at the 2nd
+        # fret down another octave, so the character played notes the recording
+        # does not contain. Shifting is a repair for a transcription in the wrong
+        # register, not a preference. So: keep the written octave when it plays
+        # below COMFORT, and only shift when it does not.
+        COMFORT = 7.0
+        home = [s for s in fits if mean_fret(s) <= COMFORT]
+        if home:
+            return min(home, key=lambda s: (abs(s), mean_fret(s))), 0
+        return min(fits, key=mean_fret), 0
     return best, best_out
 
 
