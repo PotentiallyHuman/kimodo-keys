@@ -17,7 +17,7 @@ INST_stringN. A carried slide = detected glide covering >= 0.8 of the interval
 with a small same-string move (the performer's law; see slides.py).
 
   blender scene.blend -b --python markers_blender.py -- \
-      IN.blend PLAN.json OUT.blend [SLIDES.json]
+      IN.blend PLAN.json OUT.blend [SLIDES.json] [PREFIX]
 """
 import json
 import os
@@ -31,15 +31,22 @@ if len(args) < 3:
     raise SystemExit(__doc__)
 SRC, PLAN, OUT = args[0], args[1], args[2]
 SLIDES = args[3] if len(args) > 3 else None
+PFX = args[4] if len(args) > 4 else ""   # BASS_, GUITAR_ ...
 FPS = 30
 RED = (0.90, 0.04, 0.04, 1.0)
 CARRY_COVERED, CARRY_MAX_FRETS = 0.8, 4
 
 bpy.ops.wm.open_mainfile(filepath=SRC)
 sc = bpy.context.scene
+# a scene reused between takes can still carry markers from the last one.
+# Left in place they are animated relics: in a band scene, looping their
+# old action for a whole song sent them flying around the room.
+for _o in list(bpy.data.objects):
+    if any(t in _o.name.upper() for t in ("NOTE_MARK", "NOTEMARK", "DIGIT")):
+        bpy.data.objects.remove(_o, do_unlink=True)
 bpy.context.view_layer.update()
 notes = json.load(open(PLAN))["notes"]
-neck = bpy.data.objects["INST_neck"]
+neck = bpy.data.objects[f"{PFX}INST_neck"]
 N, Ni = neck.matrix_world, neck.matrix_world.inverted()
 
 # which note-pairs are CARRIED slides -- same thresholds as the hand itself,
@@ -61,14 +68,14 @@ if SLIDES and os.path.exists(SLIDES):
 # the board, in its own frame: frets along x, strings along y, out of board z
 fx = {}
 for o in bpy.data.objects:
-    if o.name.startswith("INST_fret") and o.name[9:].isdigit():
+    if o.name.startswith(f"{PFX}INST_fret") and o.name[len(PFX) + 9:].isdigit():
         v = [Ni @ (o.matrix_world @ p.co) for p in o.data.vertices]
-        fx[int(o.name[9:])] = sum(q.x for q in v) / len(v)
+        fx[int(o.name[len(PFX) + 9:])] = sum(q.x for q in v) / len(v)
 sy = {}
 for o in bpy.data.objects:
-    if o.name.startswith("INST_string"):
+    if o.name.startswith(f"{PFX}INST_string"):
         v = [Ni @ (o.matrix_world @ p.co) for p in o.data.vertices]
-        sy[int(o.name[11:])] = sum(q.y for q in v) / len(v)
+        sy[int(o.name[len(PFX) + 11:])] = sum(q.y for q in v) / len(v)
 TOP = max(v.co.z for v in neck.data.vertices)
 HIGH = max(k for k in fx if k > 0)
 NUT_SIGN = 1 if fx[1] > fx[HIGH] else -1      # which way is toward the nut
@@ -105,17 +112,17 @@ ib.inputs["Emission Strength"].default_value = 0.0
 
 bpy.ops.mesh.primitive_plane_add(size=1.0)
 mark = bpy.context.active_object
-mark.name = "NOTE_MARK"
+mark.name = f"{PFX}NOTE_MARK"
 mark.data.materials.append(mat)
 mark.parent = neck
 mark.matrix_parent_inverse = Matrix.Identity(4)
 
 digits = {}
 for f in (1, 2, 3, 4):
-    curve = bpy.data.curves.new(f"DIGIT_{f}", type='FONT')
+    curve = bpy.data.curves.new(f"{PFX}DIGIT_{f}", type='FONT')
     curve.body = str(f)
     curve.align_x, curve.align_y = 'CENTER', 'CENTER'
-    d = bpy.data.objects.new(f"DIGIT_{f}", curve)
+    d = bpy.data.objects.new(f"{PFX}DIGIT_{f}", curve)
     sc.collection.objects.link(d)
     d.data.materials.append(ink)
     d.parent = neck

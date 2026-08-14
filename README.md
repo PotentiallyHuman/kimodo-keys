@@ -74,6 +74,30 @@ python3 -m score2motion.fretted.risers    placed.json stem.wav --out risers.json
   drop — ≥ 3 semitones over ≥ 300 ms, discriminated from vibrato, drift, and fretted runs
   by measured pullback, rate, and stair-step share.
 
+### The hands belong to the instrument
+
+`instrument_space.py` is the small idea the rest of this depends on: a hand is
+not at a place in the room and not at a place on the body, it is at a place on
+the **instrument**. Capture the wrists in instrument space once, in the scene
+where the fingers are provably on the strings; then, wherever a strap, a lean,
+or a physics pass puts that instrument later, stamp the wrists back onto it.
+Arms solve afterwards as connectors from the shoulder; fingers ride the wrist.
+
+`audit_contact.py` is how you know it held. It measures each pressed fingertip
+against the fret and string objects **as they are on the frame being judged** —
+not where they were at bake time, which is the measurement that lies:
+
+```bash
+blender -b --factory-startup scene.blend --python audit_contact.py -- placed.json
+blender -b --factory-startup band.blend  --python audit_contact.py -- placed.json BASS_
+```
+
+The optional prefix is for scenes holding a whole band (`BASS_INST_neck`,
+`GUITAR_INST_fret5`); `markers_blender.py` takes the same prefix as its fifth
+argument. That audit is worth running even when everything looks right: a hand
+evaluated in a scene whose instrument had moved 11 cm reported a perfect wrist
+and was 108 mm off the strings, and only this check said so.
+
 `truthgate`, `slides` and `risers` read audio and need the extra:
 `pip install score2motion[audio]`. `place_dp` is pure Python.
 `markers_blender.py` overlays a red fret marker with the finger number, driven by the
