@@ -26,7 +26,7 @@ which way a nail faces. The per-finger grip dial here is its idea.
 import math
 
 __all__ = ["fit_cylinder", "Cylinder", "wrap_angle", "solve_dial",
-           "far_side", "thumb_goal", "nail_along_axis"]
+           "far_side", "first_contact"]
 
 
 def _rot(v, axis, ang):
@@ -231,27 +231,28 @@ def solve_dial(measure, press, lo=-0.6, hi=1.35, steps=18):
 
 
 # --------------------------------------------------------------- the thumb
-# The thumb does not do what the fingers do, and treating it as a fifth finger
-# is why it stayed broken through a dozen attempts.
+# The thumb is not a fifth finger and it is not derived here. Every attempt to
+# derive it failed, and each failure passed a test of its own invention:
 #
-# Three separate things are true of it:
+#   * "wrap it like a finger"      -- it lies ALONG the object, 80 to 91 percent
+#     along the axis, and a turn about that axis only slides a point round a
+#     circle at a fixed distance along it. It sat 51mm off at every joint limit.
+#   * "press it at the far side"   -- it then settles anywhere on the surface,
+#     and did: 50mm from the fingers, or rolled flat like a finger.
+#   * "aim it at the index tip"    -- right for a microphone, wrong for anything
+#     a hand cannot close around.
+#   * "roll its nail along the object" / "roll its pad toward the index" -- both
+#     invented, and a thumb placed by hand reads 102 to 132 degrees away from the
+#     second one. The rule was failing a correct thumb.
 #
-#   1. it PRESSES, it does not wrap. On a handle the thumb lies diagonally ALONG
-#      the length and pushes its pad into the side. Measured on a real grip it
-#      ran 80 to 91 percent along the object's own axis -- and turning a bone
-#      about that axis only slides it round a circle at a fixed distance along
-#      it, so a thumb lying down the length can never come underneath, however
-#      far its joints are allowed to fold. It sat 51mm off the surface at every
-#      limit it was given.
-#   2. it goes to the OPPOSITE SIDE from the fingers, and must be held there.
-#      Allowed to slide freely onto the nearest surface it drifted 93 degrees
-#      round and ended up sharing a side with the index and little fingers.
-#   3. its nail does NOT point out of the object. Grip something that fits
-#      exactly and the thumb tip and index tip touch, which they can only do if
-#      their pads face each other -- so the thumb is rolled the opposite way to
-#      the index and its nail lies roughly ALONG the object. Measured: 33 to 40
-#      degrees off the centre line, against the fingers' 90, which is dead
-#      radial. Graded by the fingers' rule a wrongly rolled thumb passes.
+# So the SHAPE of a closing thumb is measured once, from a thumb placed by hand
+# on a real object, and kept: the turn each joint makes relative to the joint
+# above it, from the open hand to the closed one. Solving then has one unknown --
+# how far along that shape to go -- and the roll comes with it for free, because
+# it is part of what was measured.
+#
+# Reproduced against the hand-placed reference: tip to index tip 0.1mm, worst
+# joint 1.5 degrees, worst nail roll 1.3 degrees.
 
 
 def far_side(cyl, finger_tips):
@@ -266,35 +267,38 @@ def far_side(cyl, finger_tips):
     return _mul(_norm(acc), -1.0)
 
 
-def thumb_goal(cyl, finger_tips, thumb_tip, rho, max_off=50.0):
-    """Where to press the thumb: on the surface, under the object.
+def first_contact(gap, top=1.4, steps=56, press=0.001, refine=18):
+    """Close along the shape and stop at the FIRST thing met.
 
-    It may slide toward wherever it can actually reach, but never further than
-    `max_off` degrees round from straight opposite the fingers -- unbounded, it
-    walks back round to the fingers' own side and the grip stops opposing.
+    `gap(t)` closes the thumb to t and returns how far its fingertip skin is
+    from touching, negative once it is in. Returns the t to use.
+
+    Scanning before refining is not caution, it is necessary: the gap does not
+    shrink steadily with t, because a thumb can swing past a contact and out the
+    other side. Bisecting straight away answers nonsense -- it reported "nothing
+    within reach" for a thumb that was 7mm into the object at half closure.
+
+    If nothing is ever met it returns the closest approach, which is the right
+    answer for an object too big to get a hand round: the thumb stays out.
     """
-    far = far_side(cyl, finger_tips)
-    if far is None:
-        return None
-    r = cyl.radial(thumb_tip)
-    u = far if _len(r) < 1e-9 else _norm(r)
-    lim = math.radians(max_off)
-    ang = math.acos(max(-1.0, min(1.0, _dot(u, far))))
-    if ang > lim:
-        ax = _cross(far, u)
-        u = far if _len(ax) < 1e-9 else _rot(far, _norm(ax), lim)
-    t = _dot(_sub(thumb_tip, cyl.centre), cyl.axis)
-    t = max(cyl.lo + 0.010, min(cyl.hi - 0.010, t))
-    return _add(_add(cyl.centre, _mul(cyl.axis, t)), _mul(u, rho))
-
-
-def nail_along_axis(bone_dir, axis):
-    """Which way a thumb bone's nail should face: along the object.
-
-    Across the bone, since a nail cannot point down its own length, and on the
-    side the thumb itself points.
-    """
-    u = _norm(bone_dir)
-    sgn = 1.0 if _dot(u, axis) > 0 else -1.0
-    w = _sub(_mul(axis, sgn), _mul(u, _dot(_mul(axis, sgn), u)))
-    return None if _len(w) < 1e-9 else _norm(w)
+    grid = [top * k / float(steps) for k in range(steps + 1)]
+    hit = None
+    for k, t in enumerate(grid):
+        if gap(t) <= -press:
+            hit = k
+            break
+    if hit is None:
+        best, at = None, 0.0
+        for t in grid:
+            g = gap(t)
+            if best is None or g < best:
+                best, at = g, t
+        return at
+    lo, hi = (grid[hit - 1] if hit else 0.0), grid[hit]
+    for _ in range(refine):
+        mid = (lo + hi) / 2.0
+        if gap(mid) > -press:
+            lo = mid
+        else:
+            hi = mid
+    return hi
