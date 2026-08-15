@@ -208,6 +208,37 @@ The bass pipeline is model-agnostic — it consumes body motion as BVH, from
 top of the player's own posture. The keys pipeline currently drives Kimodo's constraint API
 directly.
 
+## Roll flips
+
+A retargeted bone can spin half a turn about its own length between two frames
+without moving anywhere. The retargeter fixes roll from a reference direction on
+the source skeleton, and where that reference goes near-degenerate the solution
+flips sides -- both answers point the bone identically, only the roll differs.
+
+Measured on a generated take of a singer: her free wrist changed orientation by
+179.9 degrees between consecutive frames while the bone moved 0.9. Six times in
+five seconds. The fingers hang off the wrist, so the whole hand snapped over and
+back.
+
+```python
+from score2motion.motion.roll_flips import find_flips, worst_spin
+
+bad = find_flips([(direction_xyz, quat_wxyz), ...])   # frame indices
+worst_spin(frames)                                     # report after repairing
+```
+
+The test is narrow on purpose: the orientation must jump more than 90 degrees
+**and** the direction must change less than 15. A fast, real turn of a wrist
+moves the bone too and is left alone. Checking only the orientation flags every
+quick movement; comparing quaternions without taking the dot product's absolute
+value flags about half the frames of any take, because a quaternion and its
+negative are the same rotation.
+
+It reports where the roll BREAKS, not every frame on the wrong side -- a run of
+flipped frames is discontinuous only at its edges. A repair walks the take in
+order against frames it has already corrected, which is what undoes the middle
+of a run.
+
 ## License
 
 Apache-2.0. Not affiliated with NVIDIA.
