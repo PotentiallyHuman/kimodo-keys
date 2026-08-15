@@ -25,7 +25,15 @@ which way a nail faces. The per-finger grip dial here is its idea.
 """
 import math
 
-__all__ = ["fit_cylinder", "Cylinder", "wrap_angle", "solve_dial"]
+__all__ = ["fit_cylinder", "Cylinder", "wrap_angle", "solve_dial",
+           "far_side", "thumb_goal", "nail_along_axis"]
+
+
+def _rot(v, axis, ang):
+    """Rodrigues: turn v about a unit axis."""
+    c, s_ = math.cos(ang), math.sin(ang)
+    return _add(_add(_mul(v, c), _mul(_cross(axis, v), s_)),
+                _mul(axis, _dot(axis, v) * (1.0 - c)))
 
 
 def _sub(a, b):
@@ -220,3 +228,73 @@ def solve_dial(measure, press, lo=-0.6, hi=1.35, steps=18):
         else:
             hi = mid
     return hi
+
+
+# --------------------------------------------------------------- the thumb
+# The thumb does not do what the fingers do, and treating it as a fifth finger
+# is why it stayed broken through a dozen attempts.
+#
+# Three separate things are true of it:
+#
+#   1. it PRESSES, it does not wrap. On a handle the thumb lies diagonally ALONG
+#      the length and pushes its pad into the side. Measured on a real grip it
+#      ran 80 to 91 percent along the object's own axis -- and turning a bone
+#      about that axis only slides it round a circle at a fixed distance along
+#      it, so a thumb lying down the length can never come underneath, however
+#      far its joints are allowed to fold. It sat 51mm off the surface at every
+#      limit it was given.
+#   2. it goes to the OPPOSITE SIDE from the fingers, and must be held there.
+#      Allowed to slide freely onto the nearest surface it drifted 93 degrees
+#      round and ended up sharing a side with the index and little fingers.
+#   3. its nail does NOT point out of the object. Grip something that fits
+#      exactly and the thumb tip and index tip touch, which they can only do if
+#      their pads face each other -- so the thumb is rolled the opposite way to
+#      the index and its nail lies roughly ALONG the object. Measured: 33 to 40
+#      degrees off the centre line, against the fingers' 90, which is dead
+#      radial. Graded by the fingers' rule a wrongly rolled thumb passes.
+
+
+def far_side(cyl, finger_tips):
+    """The way out of the object on the side the fingers are NOT on."""
+    acc = (0.0, 0.0, 0.0)
+    for t in finger_tips:
+        r = cyl.radial(t)
+        if _len(r) > 1e-9:
+            acc = _add(acc, _norm(r))
+    if _len(acc) < 1e-9:
+        return None
+    return _mul(_norm(acc), -1.0)
+
+
+def thumb_goal(cyl, finger_tips, thumb_tip, rho, max_off=50.0):
+    """Where to press the thumb: on the surface, under the object.
+
+    It may slide toward wherever it can actually reach, but never further than
+    `max_off` degrees round from straight opposite the fingers -- unbounded, it
+    walks back round to the fingers' own side and the grip stops opposing.
+    """
+    far = far_side(cyl, finger_tips)
+    if far is None:
+        return None
+    r = cyl.radial(thumb_tip)
+    u = far if _len(r) < 1e-9 else _norm(r)
+    lim = math.radians(max_off)
+    ang = math.acos(max(-1.0, min(1.0, _dot(u, far))))
+    if ang > lim:
+        ax = _cross(far, u)
+        u = far if _len(ax) < 1e-9 else _rot(far, _norm(ax), lim)
+    t = _dot(_sub(thumb_tip, cyl.centre), cyl.axis)
+    t = max(cyl.lo + 0.010, min(cyl.hi - 0.010, t))
+    return _add(_add(cyl.centre, _mul(cyl.axis, t)), _mul(u, rho))
+
+
+def nail_along_axis(bone_dir, axis):
+    """Which way a thumb bone's nail should face: along the object.
+
+    Across the bone, since a nail cannot point down its own length, and on the
+    side the thumb itself points.
+    """
+    u = _norm(bone_dir)
+    sgn = 1.0 if _dot(u, axis) > 0 else -1.0
+    w = _sub(_mul(axis, sgn), _mul(u, _dot(_mul(axis, sgn), u)))
+    return None if _len(w) < 1e-9 else _norm(w)

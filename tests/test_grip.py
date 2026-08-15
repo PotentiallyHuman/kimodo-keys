@@ -5,7 +5,9 @@ a test so it cannot happen twice.
 """
 import math
 
-from score2motion.hand.grip import Cylinder, fit_cylinder, solve_dial, wrap_angle
+from score2motion.hand.grip import (Cylinder, far_side, fit_cylinder,
+                                    nail_along_axis, solve_dial, thumb_goal,
+                                    wrap_angle)
 
 
 def ring(centre, axis_pt, radius, length, n=48, m=9):
@@ -121,3 +123,65 @@ def test_dial_can_open_a_finger_that_starts_buried():
 def test_dial_reports_the_ceiling_when_nothing_can_be_reached():
     assert solve_dial(lambda t: -0.05, 0.001) == 1.35
     assert solve_dial(lambda t: None, 0.001) == 1.35
+
+
+# --------------------------------------------------------------- the thumb
+
+
+def test_thumb_goes_to_the_side_the_fingers_are_not_on():
+    cyl = Cylinder((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.02, -0.1, 0.1)
+    tips = [(0.03, 0.005, 0.0), (0.03, 0.0, 0.0), (0.03, -0.005, 0.0),
+            (0.028, -0.01, 0.0)]
+    far = far_side(cyl, tips)
+    assert far[0] < -0.9                      # fingers on +x, thumb goes to -x
+
+
+def test_thumb_may_slide_but_never_round_onto_the_fingers_side():
+    # Left free it walks back to the fingers and the grip stops opposing:
+    # measured, it drifted 93 degrees and shared a side with index and pinky.
+    cyl = Cylinder((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.02, -0.1, 0.1)
+    tips = [(0.03, 0.0, 0.0)]
+    goal = thumb_goal(cyl, tips, (0.03, 0.001, 0.0), 0.028, max_off=50.0)
+    u = (goal[0], goal[1], 0.0)
+    n = math.hypot(u[0], u[1])
+    ang = math.degrees(math.acos(max(-1.0, min(1.0, -u[0] / n))))
+    assert ang <= 50.5
+
+
+def test_thumb_goal_lands_on_the_surface_and_beside_the_object():
+    cyl = Cylinder((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.02, -0.1, 0.1)
+    goal = thumb_goal(cyl, [(0.03, 0.0, 0.0)], (-0.05, 0.0, 0.4), 0.028)
+    assert abs(cyl.distance(goal) - 0.028) < 1e-9
+    assert cyl.beside(goal)                    # clamped back onto the object
+
+
+def test_thumb_nail_lies_as_near_the_object_as_a_nail_can():
+    # A finger's nail points straight out, 90 degrees to the centre line. The
+    # thumb's leans toward lying ALONG the object, because gripping something
+    # that fits exactly puts thumb tip and index tip together, and that needs
+    # their pads facing each other.
+    #
+    # It cannot literally lie along the axis: a nail is across its own bone, so
+    # a thumb bone running near-parallel to the object has no nail direction
+    # near-parallel to it either. The contract is the closest one available.
+    axis = (0.0, 0.0, 1.0)
+    for bone in ((0.3, 0.0, 0.9), (1.0, 0.0, 0.35), (0.6, 0.4, 0.7)):
+        nail = nail_along_axis(bone, axis)
+        assert abs(sum(nail[i] * bone[i] for i in range(3))) < 1e-9
+        best = abs(nail[2])
+        for k in range(360):                   # no direction across the bone
+            th = math.radians(k)               # gets nearer the centre line
+            u = [b / math.sqrt(sum(x * x for x in bone)) for b in bone]
+            n0 = (0.0, 0.0, 1.0) if abs(u[2]) < 0.9 else (1.0, 0.0, 0.0)
+            e1 = [u[1] * n0[2] - u[2] * n0[1], u[2] * n0[0] - u[0] * n0[2],
+                  u[0] * n0[1] - u[1] * n0[0]]
+            m = math.sqrt(sum(x * x for x in e1))
+            e1 = [x / m for x in e1]
+            e2 = [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2],
+                  u[0] * e1[1] - u[1] * e1[0]]
+            cand = [math.cos(th) * e1[i] + math.sin(th) * e2[i] for i in range(3)]
+            assert abs(cand[2]) <= best + 1e-9
+
+
+def test_thumb_nail_is_undefined_when_the_bone_lies_along_the_axis():
+    assert nail_along_axis((0.0, 0.0, 1.0), (0.0, 0.0, 1.0)) is None
