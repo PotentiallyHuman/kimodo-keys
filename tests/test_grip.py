@@ -167,3 +167,25 @@ def test_first_contact_returns_the_closest_approach_it_found():
         return 0.02 + (t - 0.7) ** 2             # nearest at t=0.7, never touches
     t = first_contact(gap, press=0.001)
     assert abs(t - 0.7) < 0.05
+
+
+def test_first_contact_digs_a_buried_thumb_out_on_a_fat_object():
+    # On an object fatter than the measured one the thumb starts INSIDE, before
+    # it has closed at all -- 12.6mm through a 30mm cylinder, measured. Reading
+    # that first sample as "contact" stops the search on step one and leaves it
+    # buried. Closing is what frees it: the curl that wraps a thin object lifts
+    # the thumb off a thick one.
+    def gap(t):
+        return -0.0126 + 0.025 * t               # inside at t=0, out by t=0.6
+    t = first_contact(gap, press=0.001)
+    assert abs(gap(t) + 0.001) < 2e-4            # settles AT the press depth
+    assert 0.4 < t < 0.5
+
+
+def test_first_contact_takes_the_least_buried_when_it_never_surfaces():
+    # Wedged: no closure gets it out, so take the shallowest rather than the
+    # first sample, which is the deepest of them.
+    def gap(t):
+        return -0.03 + 0.01 * t                  # still 16mm in when fully closed
+    t = first_contact(gap, press=0.001)
+    assert t == 1.4

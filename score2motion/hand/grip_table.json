@@ -1,0 +1,227 @@
+{
+ "bones": {
+  "finger1-1": {
+   "along_in_radii": 1.6793,
+   "degrees_round": 109.99,
+   "quat": [
+    0.30256,
+    0.82028,
+    0.44725,
+    -0.18856
+   ],
+   "radius_in_radii": 2.5119
+  },
+  "finger1-2": {
+   "along_in_radii": 2.2442,
+   "degrees_round": 69.84,
+   "quat": [
+    0.12203,
+    0.91594,
+    0.33688,
+    -0.18074
+   ],
+   "radius_in_radii": 1.7494
+  },
+  "finger1-3": {
+   "along_in_radii": 2.4505,
+   "degrees_round": 4.0,
+   "quat": [
+    0.21574,
+    -0.90565,
+    -0.0228,
+    0.36433
+   ],
+   "radius_in_radii": 1.9477
+  },
+  "finger2-1": {
+   "along_in_radii": 2.0083,
+   "degrees_round": -154.02,
+   "quat": [
+    0.34116,
+    -0.62617,
+    -0.50431,
+    -0.48702
+   ],
+   "radius_in_radii": 2.4111
+  },
+  "finger2-2": {
+   "along_in_radii": 2.1008,
+   "degrees_round": -118.44,
+   "quat": [
+    0.36189,
+    -0.60341,
+    -0.53393,
+    -0.46888
+   ],
+   "radius_in_radii": 1.6261
+  },
+  "finger2-3": {
+   "along_in_radii": 2.1834,
+   "degrees_round": -73.23,
+   "quat": [
+    0.54876,
+    -0.25091,
+    -0.76606,
+    -0.22149
+   ],
+   "radius_in_radii": 1.72
+  },
+  "finger3-1": {
+   "along_in_radii": 0.5662,
+   "degrees_round": -153.35,
+   "quat": [
+    0.32739,
+    -0.60119,
+    -0.48156,
+    -0.54726
+   ],
+   "radius_in_radii": 2.4403
+  },
+  "finger3-2": {
+   "along_in_radii": 0.8187,
+   "degrees_round": -103.46,
+   "quat": [
+    0.46388,
+    -0.44732,
+    -0.62749,
+    -0.43701
+   ],
+   "radius_in_radii": 1.7515
+  },
+  "finger3-3": {
+   "along_in_radii": 1.0248,
+   "degrees_round": -51.55,
+   "quat": [
+    0.62159,
+    -0.06263,
+    -0.76864,
+    -0.13744
+   ],
+   "radius_in_radii": 1.7456
+  },
+  "finger4-1": {
+   "along_in_radii": -0.5322,
+   "degrees_round": -146.7,
+   "quat": [
+    0.24851,
+    -0.5998,
+    -0.48466,
+    -0.58616
+   ],
+   "radius_in_radii": 1.8215
+  },
+  "finger4-2": {
+   "along_in_radii": -0.0833,
+   "degrees_round": -92.45,
+   "quat": [
+    0.46045,
+    -0.35843,
+    -0.68301,
+    -0.43933
+   ],
+   "radius_in_radii": 1.6775
+  },
+  "finger4-3": {
+   "along_in_radii": 0.2914,
+   "degrees_round": -45.29,
+   "quat": [
+    0.61067,
+    -0.00306,
+    -0.77176,
+    -0.17738
+   ],
+   "radius_in_radii": 1.6613
+  },
+  "finger5-1": {
+   "along_in_radii": -1.6082,
+   "degrees_round": -162.07,
+   "quat": [
+    0.15229,
+    -0.60216,
+    -0.379,
+    -0.68598
+   ],
+   "radius_in_radii": 1.6629
+  },
+  "finger5-2": {
+   "along_in_radii": -1.2069,
+   "degrees_round": -121.13,
+   "quat": [
+    0.32704,
+    -0.48174,
+    -0.52461,
+    -0.62109
+   ],
+   "radius_in_radii": 1.5261
+  },
+  "finger5-3": {
+   "along_in_radii": -0.9131,
+   "degrees_round": -89.74,
+   "quat": [
+    0.51349,
+    -0.282,
+    -0.65387,
+    -0.47882
+   ],
+   "radius_in_radii": 1.5121
+  },
+  "metacarpal1": {
+   "along_in_radii": 0.4861,
+   "degrees_round": 108.46,
+   "quat": [
+    0.24547,
+    0.79761,
+    -0.02483,
+    0.55041
+   ],
+   "radius_in_radii": 2.756
+  },
+  "metacarpal2": {
+   "along_in_radii": 0.4861,
+   "degrees_round": 108.46,
+   "quat": [
+    0.11602,
+    0.75687,
+    -0.12296,
+    0.63133
+   ],
+   "radius_in_radii": 2.7559
+  },
+  "metacarpal3": {
+   "along_in_radii": -0.6835,
+   "degrees_round": 114.16,
+   "quat": [
+    0.0641,
+    0.77,
+    -0.04218,
+    0.63341
+   ],
+   "radius_in_radii": 2.5252
+  },
+  "metacarpal4": {
+   "along_in_radii": -0.6835,
+   "degrees_round": 114.17,
+   "quat": [
+    0.04306,
+    -0.68818,
+    0.17615,
+    -0.70252
+   ],
+   "radius_in_radii": 2.5252
+  },
+  "wrist": {
+   "along_in_radii": 0.1313,
+   "degrees_round": 95.42,
+   "quat": [
+    0.16248,
+    0.61014,
+    -0.00181,
+    0.77545
+   ],
+   "radius_in_radii": 4.3523
+  }
+ },
+ "hand": "R",
+ "measured": "one hand placed by hand on a real object; every position is in radii so it fits any size, and every rotation is in the object own frame so mirroring is a transpose",
+ "reference_radius_mm": 17.866
+}

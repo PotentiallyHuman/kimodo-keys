@@ -280,8 +280,39 @@ def first_contact(gap, top=1.4, steps=56, press=0.001, refine=18):
 
     If nothing is ever met it returns the closest approach, which is the right
     answer for an object too big to get a hand round: the thumb stays out.
+
+    The opposite end of that range needs saying too. On an object FATTER than the
+    one the shape was measured on, the digit can already be inside before it has
+    closed at all -- the palm is placed further out, in radii, but a thumb is the
+    length it is, and it starts pointing through the surface. There is no first
+    contact to find then, and stopping at the first sample because it reads as
+    "in" leaves it 12.6mm through a scaffold pole. What is wanted is the
+    shallowest way OUT, and closing is what provides it: the same curl that
+    wraps a thin object lifts a thumb off a thick one. So it closes until the
+    digit surfaces, and settles there at the same press depth as any other grip.
     """
     grid = [top * k / float(steps) for k in range(steps + 1)]
+    if gap(grid[0]) <= -press:
+        out = None
+        for k, t in enumerate(grid):
+            if gap(t) > -press:
+                out = k
+                break
+        if out is None:                    # never surfaces: the least buried
+            best, at = None, grid[0]
+            for t in grid:
+                g = gap(t)
+                if best is None or g > best:
+                    best, at = g, t
+            return at
+        lo, hi = grid[out - 1], grid[out]
+        for _ in range(refine):
+            mid = (lo + hi) / 2.0
+            if gap(mid) > -press:
+                hi = mid
+            else:
+                lo = mid
+        return hi
     hit = None
     for k, t in enumerate(grid):
         if gap(t) <= -press:
